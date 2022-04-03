@@ -6,7 +6,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "Apache Arrow Destination Spec",
     "type": "object",
-    "required": ["destination_path"],
+    "required": ["destination_path", "chunk_size"],
     "additionalProperties": false,
     "properties": {
       "destination_path": {
@@ -14,6 +14,12 @@
         "description": "Path to the directory where Apache Arrow files will be written. The destination uses the local mount \"/local\" and any data files will be placed inside that local mount. For more information check out our <a href=\"https://docs.airbyte.io/integrations/destinations/local-csv\">docs</a>",
         "type": "string",
         "examples": ["/local"]
+      },
+      "chunk_size": {
+        "title": "Chunk Size",
+        "description": "Chunk Size in Apache Arrow",
+        "type": "number",
+        "examples": ["20000"]
       }
     }
   }

@@ -74,7 +74,7 @@ public class ApacheArrowRecordConsumer extends FailureTrackingAirbyteMessageCons
             final ApacheArrowFileWriter handler = entry.getValue();
             LOGGER.debug("Closing writer {}", entry.getKey());
             try {
-                handler.close(hasFailed);
+                handler.close();
             } catch (Exception e) {
                 exceptionsThrown.add(e);
                 LOGGER.error("Exception while closing writer {}", entry.getKey(), e);

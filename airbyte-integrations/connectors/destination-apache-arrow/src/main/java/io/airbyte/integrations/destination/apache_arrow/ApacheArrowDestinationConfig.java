@@ -16,15 +16,19 @@ public class ApacheArrowDestinationConfig {
 
     protected static final Logger LOGGER = LoggerFactory.getLogger(ApacheArrowDestinationConfig.class);
     private static final String DESTINATION_PATH_FIELD = "destination_path";
+    private static final String CHUNK_SIZE_FIELD = "chunk_size";
     private final Path destinationPath;
+    private final int chunkSize;
 
-    private ApacheArrowDestinationConfig(Path destinationPath) {
+    private ApacheArrowDestinationConfig(Path destinationPath, int chunkSize) {
         this.destinationPath = destinationPath;
+        this.chunkSize = chunkSize;
     }
 
     public static ApacheArrowDestinationConfig of(final JsonNode config) {
         Path destinationPath = getDestinationPath(config);
-        return new ApacheArrowDestinationConfig(destinationPath);
+        int chunkSize = getChunkSize(config);
+        return new ApacheArrowDestinationConfig(destinationPath, chunkSize);
     }
 
     private static Path getDestinationPath(JsonNode config) {
@@ -42,7 +46,15 @@ public class ApacheArrowDestinationConfig {
         return destinationPath;
     }
 
+    private static int getChunkSize(JsonNode config) {
+        return config.get(CHUNK_SIZE_FIELD).asInt();
+    }
+
     public Path getDestinationPath() {
         return destinationPath;
+    }
+
+    public int getChunkSize() {
+        return chunkSize;
     }
 }

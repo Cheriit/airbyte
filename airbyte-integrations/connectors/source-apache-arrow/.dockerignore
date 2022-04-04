@@ -4,3 +4,4 @@
 !source_apache_arrow
 !setup.py
 !secrets
+!arraydata.arrow

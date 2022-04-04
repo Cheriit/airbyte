@@ -15,7 +15,7 @@
       },
       "format": {
         "type": "string",
-        "enum": ["arrow"],
+        "enum": ["arrow","csv"],
         "default": "arrow",
         "title": "File Format",
         "description": "The Format of the file which should be replicated (Warning: some formats may be experimental, please refer to the docs)."

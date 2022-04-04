@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y jq curl bash && rm -rf /var/lib/apt/lis
 
 
 COPY setup.py ./
+
 # install necessary packages to a temporary folder
 RUN pip install --prefix=/install .
 
@@ -26,7 +27,10 @@ RUN echo "Etc/UTC" > /etc/timezone
 
 # copy payload code only
 COPY main.py ./
+COPY arraydata.arrow ./
 COPY source_apache_arrow ./source_apache_arrow
+
+
 
 ENV AIRBYTE_ENTRYPOINT "python /airbyte/integration_code/main.py"
 ENTRYPOINT ["python", "/airbyte/integration_code/main.py"]

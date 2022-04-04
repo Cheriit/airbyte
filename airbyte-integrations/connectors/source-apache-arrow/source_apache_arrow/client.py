@@ -33,7 +33,7 @@ class URLFile:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-
+    @property
     def full_url(self):
         return f"{self.storage_scheme}{self.url}"
 
@@ -45,7 +45,6 @@ class URLFile:
     def open(self, binary=False):
         self.close()
         self._file = self._open(binary=binary)
-
         return self
 
     def _open(self, binary):
@@ -151,15 +150,6 @@ class Client:
             # pandas.read_csv additional arguments can be passed to customize how to parse csv.
             # see https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.read_csv.html
             "csv": pd.read_csv,
-            # We can add option to call to pd.normalize_json to normalize semi-structured JSON data into a flat table
-            # by asking user to specify how to flatten the nested columns
-            "flat_json": pd.read_json,
-            "html": pd.read_html,
-            "excel": pd.read_excel,
-            "feather": pd.read_feather,
-            "parquet": pd.read_parquet,
-            "orc": pd.read_orc,
-            "pickle": pd.read_pickle,
             "arrow": pa.ipc,
         }
 
@@ -171,22 +161,15 @@ class Client:
             raise ConfigurationError(error_msg) from err
 
         reader_options = {**self._reader_options}
-        if self._reader_format == "csv":
-            reader_options["chunksize"] = 10000
-            if skip_data:
-                reader_options["nrows"] = 0
-                reader_options["index_col"] = 0
 
-            yield from reader(fp, **reader_options)
-        else:
-            yield reader(fp, **reader_options)
+        yield reader(fp, **reader_options)
 
     @property
     def reader(self) -> URLFile:
         return self.reader_class(url=self._url, provider=self._provider)
 
-
-    def get_binary_source(self):
+    @property
+    def binary_source(self):
         binary_formats = {"excel", "feather", "parquet", "orc", "pickle","arrow"}
         return self._reader_format in binary_formats
 
@@ -195,32 +178,23 @@ class Client:
         if self._reader_format == "arrow":
             with pa.ipc.open_file(self._url) as fp:
                 yield from fp.read_all()
-        else:
-            with self.reader.open(binary=self.binary_source) as fp:
-                if self._reader_format == "json" or self._reader_format == "jsonl":
-                    yield from self.load_nested_json(fp)
-                else:
-                    fields = set(fields) if fields else None
-                    for df in self.load_dataframes(fp):
-                        columns = fields.intersection(set(df.columns)) if fields else df.columns
-                        df = df.where(pd.notnull(df), None)
-                        yield from df[columns].to_dict(orient="records")
 
-    def _stream_properties(self):
-        with pa.ipc.open_file(self._url) as fp:
-            print("TODO")
 
-        with self.reader.open(binary=self.binary_source) as fp:
-            if self._reader_format == "json" or self._reader_format == "jsonl":
-                return self.load_nested_json_schema(fp)
 
-            df_list = self.load_dataframes(fp, skip_data=False)
-            fields = {}
-            for df in df_list:
-                for col in df.columns:
-                    fields[col] = self.dtype_to_json_type(df[col].dtype)
-            return {field: {"type": [fields[field], "null"]} for field in fields}
+    def dtype_to_json_type(dtype) -> str:
+        """Convert Pandas Dataframe types to Airbyte Types.
 
+        :param dtype: Pandas Dataframe type
+        :return: Corresponding Airbyte Type
+        """
+        if dtype == object:
+            return "string"
+        elif dtype in ("int64", "float64"):
+            return "number"
+        elif dtype == "bool":
+            return "boolean"
+        return "string"
+    @property
     def streams(self) -> Iterable:
         """Discovers available streams"""
         # TODO handle discovery of directories of multiple files instead

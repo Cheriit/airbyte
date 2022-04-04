@@ -1,6 +1,8 @@
 #
 # Copyright (c) 2021 Airbyte, Inc., all rights reserved.
 #
+import os
+
 
 import traceback
 import json
@@ -46,9 +48,9 @@ class SourceApacheArrow(Source):
         :return: AirbyteConnectionStatus indicating a Success or Failure
         """
         client = self._get_client(config)
-        logger.error("file://C:\\Users\\User\\Desktop\\arraydata.arrow")
+        os.system("dir")
         try:
-            with pa.ipc.open_file(client._url):
+            with pa.ipc.open_file(client.reader.url):
                 return AirbyteConnectionStatus(status=Status.SUCCEEDED);
 
         except Exception as err:
@@ -76,11 +78,11 @@ class SourceApacheArrow(Source):
         client = self._get_client(config)
         name = client.stream_name
 
-        logger.info(f"Discovering schema of {name} at {client.reader.full_url()}...")
+        logger.info(f"Discovering schema of {name} at {client.reader.full_url}...")
         try:
-            streams = list(client.streams())
+            streams = list(client.streams)
         except Exception as err:
-            reason = f"Failed to discover schemas of {name} at {client.reader.full_url()}: {repr(err)}\n{traceback.format_exc()}"
+            reason = f"Failed to discover schemas of {name} at {client.reader.full_url}: {repr(err)}\n{traceback.format_exc()}"
             logger.error(reason)
             raise err
         return AirbyteCatalog(streams=streams)
@@ -93,7 +95,7 @@ class SourceApacheArrow(Source):
         fields = self.selected_fields(catalog)
         name = client.stream_name
 
-        logger.info(f"Reading {name} ({client.reader.full_url()})...")
+        logger.info(f"Reading {name} ({client.reader.full_url})...")
         try:
             for row in client.read(fields=fields):
                 new_data = {}
@@ -105,7 +107,7 @@ class SourceApacheArrow(Source):
                 record = AirbyteRecordMessage(stream=name, data=new_data, emitted_at=int(datetime.now().timestamp()) * 1000)
                 yield AirbyteMessage(type=Type.RECORD, record=record)
         except Exception as err:
-            reason = f"Failed to read data of {name} at {client.reader.full_url()}: {repr(err)}\n{traceback.format_exc()}"
+            reason = f"Failed to read data of {name} at {client.reader.full_url}: {repr(err)}\n{traceback.format_exc()}"
             logger.error(reason)
             raise err
 

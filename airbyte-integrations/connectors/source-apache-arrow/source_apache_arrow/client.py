@@ -177,7 +177,10 @@ class Client:
         """Read data from the stream"""
         if self._reader_format == "arrow":
             with pa.ipc.open_file(self._url) as fp:
-                yield from fp.read_all()
+                dataPandas= fp.read_pandas()
+
+                yield from dataPandas[dataPandas.columns].to_dict(orient="records")
+               # yield from fp.read_pandas()
 
 
 

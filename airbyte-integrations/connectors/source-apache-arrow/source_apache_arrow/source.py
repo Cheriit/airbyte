@@ -3,7 +3,6 @@
 #
 import os
 
-
 import traceback
 import json
 from datetime import datetime
@@ -97,13 +96,12 @@ class SourceApacheArrow(Source):
 
         logger.info(f"Reading {name} ({client.reader.full_url})...")
         try:
-            for row in client.read(fields=fields):
-                new_data = {}
-                count=0;
-                for item in row:
-                    count+=1
-                    new_data["odczytana wartosc " +str(count) ] = str(item)
-
+            dataPandas = client.read(fields=fields)
+            new_data = {}
+            count=0;
+            for j in dataPandas:
+                new_data["sudent " + str(count)] = j;
+                count+=1;
                 record = AirbyteRecordMessage(stream=name, data=new_data, emitted_at=int(datetime.now().timestamp()) * 1000)
                 yield AirbyteMessage(type=Type.RECORD, record=record)
         except Exception as err:

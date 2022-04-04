@@ -33,7 +33,7 @@ class URLFile:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    @property
+
     def full_url(self):
         return f"{self.storage_scheme}{self.url}"
 
@@ -62,7 +62,7 @@ class URLFile:
         """
         parse_result = urlparse(self._url)
         if parse_result.scheme:
-            return self._url.split("")[-1]
+            return self._url.split("://")[-1]
         else:
             return self._url
 
@@ -108,6 +108,7 @@ class Client:
             return self._dataset_name
         return f"file_{self._provider['storage']}.{self._reader_format}"
 
+    @property
     def reader(self) -> URLFile:
         return self.reader_class(url=self._url, provider=self._provider)
 
@@ -180,39 +181,52 @@ class Client:
         else:
             yield reader(fp, **reader_options)
 
-        @property
-        def reader(self) -> URLFile:
-            return self.reader_class(url=self._url, provider=self._provider)
-
-        @property
-        def binary_source(self):
-            binary_formats = {"excel", "feather", "parquet", "orc", "pickle","arrow"}
-            return self._reader_format in binary_formats
-
-        def read(self, fields: Iterable = None) -> Iterable[dict]:
-            """Read data from the stream"""
-            if self._reader_format == "arrow":
-                with self.reader.open_file(self.binary_source) as fp:
-                    yield from fp.read_all()
-            else:
-                with self.reader.open(binary=self.binary_source) as fp:
-                    if self._reader_format == "json" or self._reader_format == "jsonl":
-                        yield from self.load_nested_json(fp)
-                    else:
-                        fields = set(fields) if fields else None
-                        for df in self.load_dataframes(fp):
-                            columns = fields.intersection(set(df.columns)) if fields else df.columns
-                            df = df.where(pd.notnull(df), None)
-                            yield from df[columns].to_dict(orient="records")
+    @property
+    def reader(self) -> URLFile:
+        return self.reader_class(url=self._url, provider=self._provider)
 
 
+    def get_binary_source(self):
+        binary_formats = {"excel", "feather", "parquet", "orc", "pickle","arrow"}
+        return self._reader_format in binary_formats
 
-        def streams(self) -> Iterable:
-            """Discovers available streams"""
-            # TODO handle discovery of directories of multiple files instead
-            json_schema = {
-                "$schema": "http://json-schema.org/draft-07/schema#",
-                "type": "object",
-                "properties": self._stream_properties(),
-            }
-            yield AirbyteStream(name=self.stream_name, json_schema=json_schema, supported_sync_modes=[SyncMode.full_refresh])
+    def read(self, fields: Iterable = None) -> Iterable[dict]:
+        """Read data from the stream"""
+        if self._reader_format == "arrow":
+            with pa.ipc.open_file(self._url) as fp:
+                yield from fp.read_all()
+        else:
+            with self.reader.open(binary=self.binary_source) as fp:
+                if self._reader_format == "json" or self._reader_format == "jsonl":
+                    yield from self.load_nested_json(fp)
+                else:
+                    fields = set(fields) if fields else None
+                    for df in self.load_dataframes(fp):
+                        columns = fields.intersection(set(df.columns)) if fields else df.columns
+                        df = df.where(pd.notnull(df), None)
+                        yield from df[columns].to_dict(orient="records")
+
+    def _stream_properties(self):
+        with pa.ipc.open_file(self._url) as fp:
+            print("TODO")
+
+        with self.reader.open(binary=self.binary_source) as fp:
+            if self._reader_format == "json" or self._reader_format == "jsonl":
+                return self.load_nested_json_schema(fp)
+
+            df_list = self.load_dataframes(fp, skip_data=False)
+            fields = {}
+            for df in df_list:
+                for col in df.columns:
+                    fields[col] = self.dtype_to_json_type(df[col].dtype)
+            return {field: {"type": [fields[field], "null"]} for field in fields}
+
+    def streams(self) -> Iterable:
+        """Discovers available streams"""
+        # TODO handle discovery of directories of multiple files instead
+        json_schema = {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": {},
+        }
+        yield AirbyteStream(name=self.stream_name, json_schema=json_schema, supported_sync_modes=[SyncMode.full_refresh])

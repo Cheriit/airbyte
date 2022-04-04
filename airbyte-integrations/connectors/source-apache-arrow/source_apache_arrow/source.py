@@ -33,7 +33,6 @@ class SourceApacheArrow(Source):
 
         return client
 
-
     def check(self, logger: AirbyteLogger, config: json) -> AirbyteConnectionStatus:
         """
         Tests if the input configuration can be used to successfully connect to the integration
@@ -49,7 +48,7 @@ class SourceApacheArrow(Source):
         client = self._get_client(config)
         logger.error("file://C:\\Users\\User\\Desktop\\arraydata.arrow")
         try:
-            with pa.ipc.open_file(binary=client.binary_source):
+            with pa.ipc.open_file(client._url):
                 return AirbyteConnectionStatus(status=Status.SUCCEEDED);
 
         except Exception as err:
@@ -77,11 +76,11 @@ class SourceApacheArrow(Source):
         client = self._get_client(config)
         name = client.stream_name
 
-        logger.info(f"Discovering schema of {name} at {client.reader().full_url}...")
+        logger.info(f"Discovering schema of {name} at {client.reader.full_url()}...")
         try:
-            streams = list(client.streams)
+            streams = list(client.streams())
         except Exception as err:
-            reason = f"Failed to discover schemas of {name} at {client.reader().full_url}: {repr(err)}\n{traceback.format_exc()}"
+            reason = f"Failed to discover schemas of {name} at {client.reader.full_url()}: {repr(err)}\n{traceback.format_exc()}"
             logger.error(reason)
             raise err
         return AirbyteCatalog(streams=streams)
@@ -94,13 +93,19 @@ class SourceApacheArrow(Source):
         fields = self.selected_fields(catalog)
         name = client.stream_name
 
-        logger.info(f"Reading {name} ({client.reader().full_url})...")
+        logger.info(f"Reading {name} ({client.reader.full_url()})...")
         try:
             for row in client.read(fields=fields):
-                record = AirbyteRecordMessage(stream=name, data=row, emitted_at=int(datetime.now().timestamp()) * 1000)
+                new_data = {}
+                count=0;
+                for item in row:
+                    count+=1
+                    new_data["odczytana wartosc " +str(count) ] = str(item)
+
+                record = AirbyteRecordMessage(stream=name, data=new_data, emitted_at=int(datetime.now().timestamp()) * 1000)
                 yield AirbyteMessage(type=Type.RECORD, record=record)
         except Exception as err:
-            reason = f"Failed to read data of {name} at {client.reader().full_url}: {repr(err)}\n{traceback.format_exc()}"
+            reason = f"Failed to read data of {name} at {client.reader.full_url()}: {repr(err)}\n{traceback.format_exc()}"
             logger.error(reason)
             raise err
 

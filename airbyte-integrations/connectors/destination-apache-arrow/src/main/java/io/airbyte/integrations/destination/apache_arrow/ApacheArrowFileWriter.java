@@ -25,6 +25,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -43,7 +44,10 @@ public class ApacheArrowFileWriter {
     public ApacheArrowFileWriter(ApacheArrowDestinationConfig apacheArrowDestinationConfig,
                                  ConfiguredAirbyteStream configuredStream) throws FileNotFoundException {
         JsonNode root = configuredStream.getStream().getJsonSchema();
-        File file = apacheArrowDestinationConfig.getDestinationPath().toFile();
+        Path directoryPath = apacheArrowDestinationConfig.getDestinationPath();
+        String streamName = configuredStream.getStream().getName();
+        Path filePath = directoryPath.resolve(streamName + ".arrow");
+        File file = filePath.toFile();
         DictionaryProvider.MapDictionaryProvider dictProvider = new DictionaryProvider.MapDictionaryProvider();
 
         fieldTypeMap = getFieldTypeMap(root);

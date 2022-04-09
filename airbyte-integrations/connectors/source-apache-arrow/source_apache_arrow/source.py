@@ -76,7 +76,6 @@ class SourceApacheArrow(Source):
         """
         client = self._get_client(config)
         name = client.stream_name
-
         logger.info(f"Discovering schema of {name} at {client.reader.full_url}...")
         try:
             streams = list(client.streams)
@@ -96,12 +95,14 @@ class SourceApacheArrow(Source):
 
         logger.info(f"Reading {name} ({client.reader.full_url})...")
         try:
-            dataPandas = client.read(fields=fields)
+            for i in fields:
+                logger.info("field source: " + i)
+            data_pandas = client.read(fields)
             new_data = {}
-            count=0;
-            for j in dataPandas:
-                new_data["sudent " + str(count)] = j;
-                count+=1;
+            count = 0
+            for j in data_pandas:
+                new_data["student " + str(count)] = j
+                count += 1
                 record = AirbyteRecordMessage(stream=name, data=new_data, emitted_at=int(datetime.now().timestamp()) * 1000)
                 yield AirbyteMessage(type=Type.RECORD, record=record)
         except Exception as err:

@@ -2,6 +2,7 @@ from urllib.parse import urlparse
 import smart_open
 from airbyte_cdk.entrypoint import logger
 
+
 class URLFile:
 
     def __init__(self, url: str, provider: dict):
@@ -46,8 +47,6 @@ class URLFile:
             return self._url.split("://")[-1]
         else:
             return self._url
-
-
 
     @property
     def storage_scheme(self) -> str:

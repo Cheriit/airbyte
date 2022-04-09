@@ -1,85 +1,17 @@
 import json
 import traceback
 from typing import Iterable
-from urllib.parse import urlparse
 
 import pandas as pd
 import pyarrow as pa
-import smart_open
+
 from airbyte_cdk.entrypoint import logger
 from airbyte_cdk.models import AirbyteStream, SyncMode
 
 from genson import SchemaBuilder
-
-
-class ConfigurationError(Exception):
-    """Client mis-configured"""
-
-
-class PermissionsError(Exception):
-    """User don't have enough permissions"""
-
-
-class URLFile:
-
-    def __init__(self, url: str, provider: dict):
-        self._url = url
-        self._provider = provider
-        self._file = None
-
-    def __enter__(self):
-        return self._file
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-
-    @property
-    def full_url(self):
-        return f"{self.storage_scheme}{self.url}"
-
-    def close(self):
-        if self._file:
-            self._file.close()
-            self._file = None
-
-    def open(self, binary=False):
-        self.close()
-        self._file = self._open(binary=binary)
-        return self
-
-    def _open(self, binary):
-        mode = "rb" if binary else "r"
-        storage = self.storage_scheme
-        url = self.url
-
-        return smart_open.open(self.full_url, mode=mode)
-
-    @property
-    def url(self) -> str:
-        """Convert URL to remove the URL prefix (scheme)
-        :return: the corresponding URL without URL prefix / scheme
-        """
-        parse_result = urlparse(self._url)
-        if parse_result.scheme:
-            return self._url.split("://")[-1]
-        else:
-            return self._url
-
-
-
-    @property
-    def storage_scheme(self) -> str:
-        """Convert Storage Names to the proper URL Prefix
-        :return: the corresponding URL prefix / scheme
-        """
-        storage_name = self._provider["storage"].upper()
-        parse_result = urlparse(self._url)
-
-        if storage_name == "LOCAL":
-            return "file://"
-
-        logger.error(f"Unknown Storage provider in: {self.full_url}")
-        return ""
+import URLFile
+import ConfigurationError
+import PermissionsError
 
 
 class Client:
@@ -107,10 +39,6 @@ class Client:
             return self._dataset_name
         return f"file_{self._provider['storage']}.{self._reader_format}"
 
-    @property
-    def reader(self) -> URLFile:
-        return self.reader_class(url=self._url, provider=self._provider)
-
     def load_nested_json_schema(self, fp) -> dict:
         # Use Genson Library to take JSON objects and generate schemas that describe them,
         builder = SchemaBuilder()
@@ -123,7 +51,7 @@ class Client:
         result = builder.to_schema()
         if "items" in result and "properties" in result["items"]:
             result = result["items"]["properties"]
-        return result
+        return result 
 
     def load_nested_json(self, fp) -> list:
         if self._reader_format == "jsonl":
@@ -139,12 +67,11 @@ class Client:
         return result
 
     def load_dataframes(self, fp, skip_data=False) -> Iterable:
-        """load and return the appropriate pandas dataframe.
+        # load and return the appropriate pandas dataframe.
 
-        :param fp: file-like object to read from
-        :param skip_data: limit reading data
-        :return: a list of dataframe loaded from files described in the configuration
-        """
+        # :param fp: file-like object to read from
+        # :param skip_data: limit reading data
+        # :return: a list of dataframe loaded from files described in the configuration
 
         readers = {
             # pandas.read_csv additional arguments can be passed to customize how to parse csv.
@@ -170,19 +97,17 @@ class Client:
 
     @property
     def binary_source(self):
-        binary_formats = {"excel", "feather", "parquet", "orc", "pickle","arrow"}
+        binary_formats = {"excel", "feather", "parquet", "orc", "pickle", "arrow"}
         return self._reader_format in binary_formats
 
     def read(self, fields: Iterable = None) -> Iterable[dict]:
         """Read data from the stream"""
         if self._reader_format == "arrow":
             with pa.ipc.open_file(self._url) as fp:
-                dataPandas= fp.read_pandas()
+                dataPandas = fp.read_pandas()
 
                 yield from dataPandas[dataPandas.columns].to_dict(orient="records")
-               # yield from fp.read_pandas()
-
-
+#               yield from fp.read_pandas()
 
     def dtype_to_json_type(dtype) -> str:
         """Convert Pandas Dataframe types to Airbyte Types.
@@ -197,6 +122,7 @@ class Client:
         elif dtype == "bool":
             return "boolean"
         return "string"
+
     @property
     def streams(self) -> Iterable:
         """Discovers available streams"""

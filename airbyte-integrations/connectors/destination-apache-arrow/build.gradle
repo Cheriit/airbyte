@@ -1,20 +1,8 @@
 plugins {
-    id 'application'
+    id 'airbyte-python'
     id 'airbyte-docker'
-    id 'airbyte-integration-test-java'
 }
 
-application {
-    mainClass = 'io.airbyte.integrations.destination.apache_arrow.ApacheArrowDestination'
-}
-
-dependencies {
-    implementation project(':airbyte-config:models')
-    implementation project(':airbyte-protocol:models')
-    implementation project(':airbyte-integrations:bases:base-java')
-    implementation files(project(':airbyte-integrations:bases:base-java').airbyteDocker.outputs)
-    implementation("org.apache.arrow:arrow-vector:7.0.0")
-
-    integrationTestJavaImplementation project(':airbyte-integrations:bases:standard-destination-test')
-    integrationTestJavaImplementation project(':airbyte-integrations:connectors:destination-apache-arrow')
+airbytePython {
+    moduleDirectory 'destination_apache_arrow'
 }

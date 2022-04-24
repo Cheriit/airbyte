@@ -1,3 +1,5 @@
 *
 !Dockerfile
-!build
+!main.py
+!destination_apache_arrow
+!setup.py

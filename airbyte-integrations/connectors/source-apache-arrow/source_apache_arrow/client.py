@@ -5,6 +5,9 @@ from typing import Iterable
 import pandas as pd
 import pyarrow as pa
 import numpy as np
+import time
+
+
 from airbyte_cdk.entrypoint import logger
 from airbyte_cdk.models import AirbyteStream, SyncMode
 from genson import SchemaBuilder
@@ -43,11 +46,14 @@ class Client:
     def read(self, fields: Iterable = None):
         """Read data from the stream"""
         if self._reader_format == "arrow":
+            open_file_start=time.perf_counter()
             with pa.ipc.open_file(self._url) as fp:
+                open_file_stop = time.perf_counter()
                 dataPandas = fp.read_pandas()
                 fields = set(fields) if fields else None
                 columns = fields.intersection(set(dataPandas.columns)) if fields else dataPandas.columns
                 yield from dataPandas[columns].to_dict(orient="records")
+            logger.info("timer for open: " + str(open_file_stop - open_file_start))
 
     @staticmethod
     def dtype_to_json_type(dtype) -> str:

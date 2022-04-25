@@ -4,7 +4,9 @@
 
 from typing import Iterable
 
-from airbyte_cdk.models import AirbyteMessage, ConfiguredAirbyteCatalog, DestinationSyncMode, Type
+from airbyte_cdk import logger
+from airbyte_cdk.entrypoint import logger
+from airbyte_cdk.models import AirbyteMessage, ConfiguredAirbyteCatalog, Type
 from destination_apache_arrow.config import DestinationApacheArrowConfig
 from destination_apache_arrow.file_writer import DestinationApacheArrowFileWriter
 from destination_apache_arrow.invalid_message_type_error import InvalidMessageTypeError
@@ -17,14 +19,14 @@ class DestinationApacheArrowRecordConsumer:
 
     def __init__(self, config: DestinationApacheArrowConfig, configured_catalog: ConfiguredAirbyteCatalog):
         self.config = config
+        self.writers = dict()
         for configured_stream in configured_catalog.streams:
             stream_name = configured_stream.stream.name
             self.writers[stream_name] = DestinationApacheArrowFileWriter(config, configured_stream)
-            if configured_stream.destination_sync_mode == DestinationSyncMode.overwrite:
-                self.writers[stream_name].delete_stream_from_entries(stream_name)
+            # if configured_stream.destination_sync_mode == DestinationSyncMode.overwrite:
+            #     self.writers[stream_name].delete_stream_from_entries(stream_name)
 
     def accept(self, input_messages: Iterable[AirbyteMessage]) -> Iterable[AirbyteMessage]:
-
         try:
             for message in input_messages:
                 record = message.record
@@ -32,7 +34,7 @@ class DestinationApacheArrowRecordConsumer:
 
                 if writer is None:
                     message = f"Unexpected stream name: {record.stream}"
-                    # self.logger.error(message)
+                    logger.error(message)
                     raise InvalidStreamNameError(message)
 
                 if message.type == Type.STATE:
@@ -43,13 +45,11 @@ class DestinationApacheArrowRecordConsumer:
                     writer.write(record)
                 else:
                     message = f"Unexpected message type: {message.type}"
-                    # self.logger.error(message)
+                    logger.error(message)
                     raise InvalidMessageTypeError(message)
-
-                writer.flush()
         except Exception as err:
-            # message = f"Failed to write data to {self.config.get_destination_path()}: {repr(err)}"
-            # self.logger.error(reason)
+            message = f"Failed to write data to {self.config.get_destination_path()}: {repr(err)}"
+            logger.error(message)
             raise err
 
     def close(self):

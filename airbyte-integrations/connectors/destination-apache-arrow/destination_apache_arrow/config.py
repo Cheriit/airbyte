@@ -6,15 +6,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Final
-
-from build.lib.destination_apache_arrow.configuration_error import ConfigurationError
+from destination_apache_arrow.configuration_error import ConfigurationError
 
 
 class DestinationApacheArrowConfig:
-    DESTINATION_PATH_FIELD: Final = "destination_path"
-
-    CHUNK_SIZE_FIELD: Final = "chunk_size"
+    DESTINATION_PATH_FIELD = "destination_path"
+    CHUNK_SIZE_FIELD = "chunk_size"
 
     _destination_path: Path
     _chunk_size: int

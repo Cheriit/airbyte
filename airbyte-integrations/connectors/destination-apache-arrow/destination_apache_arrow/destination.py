@@ -2,16 +2,14 @@
 # Copyright (c) 2021 Airbyte, Inc., all rights reserved.
 #
 
-import traceback
-from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from airbyte_cdk import AirbyteLogger
+from airbyte_cdk import logger
+from airbyte_cdk.entrypoint import logger
 from airbyte_cdk.destinations import Destination
 from airbyte_cdk.models import AirbyteConnectionStatus, AirbyteMessage, ConfiguredAirbyteCatalog, DestinationSyncMode, Status, Type
 from destination_apache_arrow.config import DestinationApacheArrowConfig
-from destination_apache_arrow.file_writer import DestinationApacheArrowFileWriter
-from destination_apache_arrow.invalid_message_type_error import InvalidMessageTypeError
 from destination_apache_arrow.record_consumer import DestinationApacheArrowRecordConsumer
 
 
@@ -58,6 +56,8 @@ class DestinationApacheArrow(Destination):
 
         config = DestinationApacheArrowConfig.of(config)
         record_consumer = DestinationApacheArrowRecordConsumer(config, configured_catalog)
+        logger.info("Started consuming messages")
         return_messages = record_consumer.accept(input_messages)
         record_consumer.close()
+        logger.info("Finished consuming messages")
         return return_messages

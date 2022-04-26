@@ -58,6 +58,6 @@ class DestinationApacheArrow(Destination):
         record_consumer = DestinationApacheArrowRecordConsumer(config, configured_catalog)
         logger.info("Started consuming messages")
         return_messages = record_consumer.accept(input_messages)
-        record_consumer.close()
+        # record_consumer.close()
         logger.info("Finished consuming messages")
         return return_messages

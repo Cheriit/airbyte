@@ -39,7 +39,7 @@ class DestinationApacheArrowFileWriter:
         self.batch = self._get_dataframe()
 
     def write(self, record_message: AirbyteRecordMessage):
-        self.batch.append(self._extract_data(record_message.data))
+        self.batch = self.batch.append(self._extract_data(record_message.data), ignore_index=True)
         self.chunk_index += 1
 
         if self.chunk_index == self.chunk_size:
@@ -50,6 +50,7 @@ class DestinationApacheArrowFileWriter:
         return self._save_chunk()
 
     def close(self):
+        logger.info("Closing files...")
         self._save_chunk()
         self.file_writer.close()
         self.output_stream.close()
@@ -65,11 +66,11 @@ class DestinationApacheArrowFileWriter:
                        for field, airbyte_type in field_type_map.items()])
 
     @staticmethod
-    def _extract_data(data: json) -> list:
-        value_list = []
+    def _extract_data(data: json) -> dict:
+        value_dict = {}
         for (key, value) in data.items():
-            value_list.append(value)
-        return value_list
+            value_dict[key] = str(value)
+        return value_dict
 
     @staticmethod
     def _get_field_type(data_type: str) -> DataType:

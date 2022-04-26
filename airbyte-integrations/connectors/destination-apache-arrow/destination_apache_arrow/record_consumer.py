@@ -27,8 +27,10 @@ class DestinationApacheArrowRecordConsumer:
             #     self.writers[stream_name].delete_stream_from_entries(stream_name)
 
     def accept(self, input_messages: Iterable[AirbyteMessage]) -> Iterable[AirbyteMessage]:
+        counter = 0
         try:
             for message in input_messages:
+                counter += 1
                 record = message.record
                 writer = self.writers[record.stream]
 
@@ -38,6 +40,7 @@ class DestinationApacheArrowRecordConsumer:
                     raise InvalidStreamNameError(message)
 
                 if message.type == Type.STATE:
+                    logger.info(f'State: {counter}')
                     writer.flush()
                     yield message
                 elif message.type == Type.RECORD:
@@ -47,6 +50,8 @@ class DestinationApacheArrowRecordConsumer:
                     message = f"Unexpected message type: {message.type}"
                     logger.error(message)
                     raise InvalidMessageTypeError(message)
+            logger.error(f"Loop end: {counter}")
+            self.close()
         except Exception as err:
             message = f"Failed to write data to {self.config.get_destination_path()}: {repr(err)}"
             logger.error(message)

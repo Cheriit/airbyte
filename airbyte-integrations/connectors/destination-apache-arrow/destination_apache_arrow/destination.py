@@ -27,8 +27,7 @@ class DestinationApacheArrow(Destination):
         :return: AirbyteConnectionStatus indicating a Success or Failure
         """
         try:
-            destination_config = DestinationApacheArrowConfig.of(config)
-            destination_config.get_destination_path().mkdir()
+            DestinationApacheArrowConfig.of(config)
             logger.info("Successfully finished ApacheArrowDestination::check")
             return AirbyteConnectionStatus(status=Status.SUCCEEDED)
         except Exception as e:

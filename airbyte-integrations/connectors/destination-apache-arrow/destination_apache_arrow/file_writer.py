@@ -8,7 +8,8 @@ from airbyte_cdk import logger
 from airbyte_cdk.entrypoint import logger
 from airbyte_cdk.models import AirbyteRecordMessage, ConfiguredAirbyteStream
 from pandas import DataFrame
-from pyarrow import DataType, RecordBatchStreamWriter, Schema, Table, bool_, float64, fs, schema, utf8
+from pyarrow import DataType, Schema, bool_, float64, schema, utf8, RecordBatch
+from pyarrow._flight import FlightDescriptor, FlightStreamWriter
 
 from destination_apache_arrow.config import DestinationApacheArrowConfig
 
@@ -20,7 +21,7 @@ class DestinationApacheArrowFileWriter:
     chunk_index: int
     schema_root: Schema
     field_type_map: dict[str, str]
-    file_writer: RecordBatchStreamWriter
+    destination_writer: FlightStreamWriter
     batch: DataFrame
 
     def __init__(self, config: DestinationApacheArrowConfig, configured_stream: ConfiguredAirbyteStream):
@@ -30,11 +31,8 @@ class DestinationApacheArrowFileWriter:
 
         self.field_type_map = self._get_field_type_map(configured_stream.stream.json_schema)
         self.schema_root = self._get_schema(self.field_type_map)
-
-        local = fs.LocalFileSystem()
-        file_path = f"{config.get_destination_path()}/{configured_stream.stream.name}.arrow"
-        self.output_stream = local.open_output_stream(file_path)
-        self.file_writer = RecordBatchStreamWriter(self.output_stream, self.schema_root)
+        upload_descriptor = FlightDescriptor.for_path(config.get_destination_path())
+        self.destination_writer, _ = config.get_destination_server().do_put(upload_descriptor, self.schema_root)
 
         self.batch = self._get_dataframe()
 
@@ -52,8 +50,7 @@ class DestinationApacheArrowFileWriter:
     def close(self):
         logger.info("Closing files...")
         self._save_chunk()
-        self.file_writer.close()
-        self.output_stream.close()
+        self.destination_writer.close()
 
     @staticmethod
     def _get_field_type_map(schema: json) -> dict[str, str]:
@@ -111,7 +108,7 @@ class DestinationApacheArrowFileWriter:
     def _save_chunk(self):
         self.total_size += self.chunk_index
         logger.info(f'Filled chunk with {self.chunk_index} items; {self.total_size} items written')
-        self.file_writer.write_table(Table.from_pandas(self.batch, preserve_index=False, schema=self.schema_root))
+        self.destination_writer.write(RecordBatch.from_pandas(self.batch, preserve_index=False, schema=self.schema_root))
         logger.info(f'Chunk written')
         self.batch = self.batch[0:0]
         self.chunk_index = 0

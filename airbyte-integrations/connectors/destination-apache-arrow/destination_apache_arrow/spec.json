@@ -6,20 +6,26 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "title": "Destination Apache Arrow",
     "type": "object",
-    "required": ["destination_path", "chunk_size"],
+    "required": ["destination_server", "chunk_size", "destination_path"],
     "additionalProperties": false,
     "properties": {
-      "destination_path": {
-        "title": "Path",
-        "description": "Path to the directory where Apache Arrow files will be written. The destination uses the local mount \"/local\" and any data files will be placed inside that local mount. For more information check out our <a href=\"https://docs.airbyte.io/integrations/destinations/local-csv\">docs</a>",
+      "destination_server": {
+        "title": "Server path",
+        "description": "Path to the Apache Arrow Flight server.",
         "type": "string",
-        "examples": ["/local"]
+        "examples": ["grpc://0.0.0.0:8815"]
       },
       "chunk_size": {
         "title": "Chunk size",
         "description": "The size of chunk",
         "type": "integer",
         "examples": [200000]
+      },
+      "destination_path": {
+        "title": "Destination path",
+        "description": "Name of the server destination path.",
+        "type": "string",
+        "examples": ["upload.parquet"]
       }
     }
   }

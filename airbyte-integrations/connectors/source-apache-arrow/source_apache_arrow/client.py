@@ -19,9 +19,9 @@ class Client:
 
     reader_class = URLFile
 
-    def __init__(self, dataset_name: str, url: str, provider: dict, format: str = None, reader_options: str = None):
+    def __init__(self, dataset_name: str, ipAddress: str, provider: dict, format: str = None, reader_options: str = None):
         self._dataset_name = dataset_name
-        self._url = url
+        self.ipAddress = ipAddress
         self._provider = provider
         self._reader_format = format or "csv"
         self._reader_options = {}
@@ -41,19 +41,22 @@ class Client:
 
     @property
     def reader(self) -> URLFile:
-        return self.reader_class(url=self._url, provider=self._provider)
+        return self.reader_class(url=self.ipAddress, provider=self._provider)
 
     def read(self, fields: Iterable = None):
         """Read data from the stream"""
         if self._reader_format == "arrow":
-            open_file_start=time.perf_counter()
-            with pa.ipc.open_file(self._url) as fp:
-                open_file_stop = time.perf_counter()
-                dataPandas = fp.read_pandas()
-                fields = set(fields) if fields else None
-                columns = fields.intersection(set(dataPandas.columns)) if fields else dataPandas.columns
-                yield from dataPandas[columns].to_dict(orient="records")
-            logger.info("timer for open: " + str(open_file_stop - open_file_start))
+            clientArrowFlight = pa.flight.connect("grpc://"+self.ipAddress+":8815")
+            upload_descriptor = pa.flight.FlightDescriptor.for_path("uploaded.parquet")
+
+            flight = clientArrowFlight.get_flight_info(upload_descriptor)
+            descriptor = flight.descriptor
+            reader = clientArrowFlight.do_get(flight.endpoints[0].ticket)
+            read_table = reader.read_all()
+            data_pandas = read_table.to_pandas()
+            fields = set(fields) if fields else None
+            columns = fields.intersection(set(data_pandas.columns)) if fields else data_pandas.columns
+            yield from data_pandas[columns].to_dict(orient="records")
 
     @staticmethod
     def dtype_to_json_type(dtype) -> str:
@@ -71,12 +74,17 @@ class Client:
         return "string"
 
     def _stream_properties(self):
-        with pa.ipc.open_file(self._url) as fp:
-            df = fp.read_pandas()
-            fields = {}
-            for col in df.columns:  # works if there is only one DATAFRAME, otherwise we need to add another for loop
-                fields[col] = self.dtype_to_json_type(df[col].dtype)
-            return {field: {"type": [fields[field], "null"]} for field in fields}
+        clientArrowFlight = pa.flight.connect("grpc://172.17.0.2:8815")
+        upload_descriptor = pa.flight.FlightDescriptor.for_path("uploaded.parquet")
+
+        flight = clientArrowFlight.get_flight_info(upload_descriptor)
+        reader = clientArrowFlight.do_get(flight.endpoints[0].ticket)
+        read_table = reader.read_all()
+        df = read_table.to_pandas()
+        fields = {}
+        for col in df.columns:  # works if there is only one DATAFRAME, otherwise we need to add another for loop
+            fields[col] = self.dtype_to_json_type(df[col].dtype)
+        return {field: {"type": [fields[field], "null"]} for field in fields}
 
     @property
     def streams(self) -> Iterable:

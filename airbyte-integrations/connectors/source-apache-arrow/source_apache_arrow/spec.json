@@ -6,7 +6,7 @@
     "title": "File Source Spec",
     "type": "object",
     "additionalProperties": false,
-    "required": ["dataset_name", "format", "url", "provider"],
+    "required": ["dataset_name", "format", "ipAddress", "provider"],
     "properties": {
       "dataset_name": {
         "type": "string",
@@ -15,7 +15,7 @@
       },
       "format": {
         "type": "string",
-        "enum": ["arrow","csv"],
+        "enum": ["arrow"],
         "default": "arrow",
         "title": "File Format",
         "description": "The Format of the file which should be replicated (Warning: some formats may be experimental, please refer to the docs)."
@@ -26,10 +26,10 @@
         "description": "This should be a string in JSON format. It depends on the chosen file format to provide additional options and tune its behavior.",
         "examples": ["{}", "{'sep': ' '}"]
       },
-      "url": {
+      "ipAddress": {
         "type": "string",
-        "title": "URL",
-        "description": "The URL path to access the file which should be replicated."
+        "title": "IP address",
+        "description": "The IP address to access server  which data should be replicated."
       },
       "provider": {
         "type": "object",
@@ -38,7 +38,7 @@
         "default": "Public Web",
         "oneOf": [
           {
-            "title": "Local Filesystem (limited)",
+            "title": "IP Address",
             "required": ["storage"],
             "properties": {
               "storage": {

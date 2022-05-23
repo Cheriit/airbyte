@@ -48,10 +48,11 @@ class SourceApacheArrow(Source):
         :return: AirbyteConnectionStatus indicating a Success or Failure
         """
         client = self._get_client(config)
+        ip_address = config.get("ipAddress")
         os.system("dir")
         try:
-            clientArrowFlight = pa.flight.connect("grpc://172.17.0.2:8815")
-            return AirbyteConnectionStatus(status=Status.SUCCEEDED);
+            clientArrowFlight = pa.flight.connect("grpc://" + ip_address + ":8815")
+            return AirbyteConnectionStatus(status=Status.SUCCEEDED)
 
         except Exception as err:
             reason = f"Failed to load: {repr(err)}\n{traceback.format_exc()}"

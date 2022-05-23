@@ -3,9 +3,11 @@ FROM python:3.7-slim
 # Bash is installed for more convenient debugging.
 RUN apt-get update && apt-get install -y jq curl bash && rm -rf /var/lib/apt/lists/*
 
+
 WORKDIR /airbyte/integration_code
 COPY source_file ./source_file
 COPY main.py ./
+COPY green_tripdata_2022-01.csv ./
 COPY setup.py ./
 RUN pip install .
 
